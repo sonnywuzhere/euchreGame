@@ -2,6 +2,7 @@ import 'dotenv/config';
 import cors from 'cors';
 import express from 'express';
 import { createServer } from 'http';
+import path from 'path';
 import { Server } from 'socket.io';
 import { ClientToServerEvents, ServerToClientEvents } from './shared/types';
 import { redis } from './rooms/roomManager';
@@ -28,6 +29,15 @@ app.get('/health', async (_req, res) => {
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
   registerHandlers(io, socket);
+});
+
+// Serve the React client in production.
+// __dirname = server/dist/, so ../../client/dist resolves to client/dist/
+// relative to the repo root.
+const clientDist = path.join(__dirname, '../../client/dist');
+app.use(express.static(clientDist));
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(clientDist, 'index.html'));
 });
 
 const PORT = process.env.PORT ?? 3001;
