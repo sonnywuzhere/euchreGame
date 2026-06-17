@@ -8,7 +8,7 @@ import {
   Player,
   ServerToClientEvents,
   Suit,
-} from '../../shared/types';
+} from '../shared/types';
 import { dealHands, createDeck, shuffleDeck } from '../game/deck';
 import {
   isValidBid,

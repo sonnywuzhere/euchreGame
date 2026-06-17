@@ -1,4 +1,4 @@
-import { GameState, Player, RoundResult } from '../../shared/types';
+import { GameState, Player, RoundResult } from '../shared/types';
 
 /**
  * Score a completed round.

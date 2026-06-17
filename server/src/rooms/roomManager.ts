@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import { GameState, Player, RoomPlayer, RoomState } from '../../shared/types';
+import { GameState, Player, RoomPlayer, RoomState } from '../shared/types';
 
 export const redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379');
 redis.on('error', (err: Error) => {

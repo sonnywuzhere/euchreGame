@@ -9,7 +9,7 @@ import {
   resolveTrick,
 } from './tricks';
 import { applyRoundScore, isGameOver, scoreRound } from './scoring';
-import { Card, GameState, Player, Suit, TrickCard } from '../../shared/types';
+import { Card, GameState, Player, Suit, TrickCard } from '../shared/types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

@@ -3,7 +3,7 @@ import cors from 'cors';
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { ClientToServerEvents, ServerToClientEvents } from '../shared/types';
+import { ClientToServerEvents, ServerToClientEvents } from './shared/types';
 import { redis } from './rooms/roomManager';
 import { registerHandlers } from './socket/handlers';
 

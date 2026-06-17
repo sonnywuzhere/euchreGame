@@ -1,4 +1,4 @@
-import { BidAction, Card, GameState, Player, Suit } from '../../shared/types';
+import { BidAction, Card, GameState, Player, Suit } from '../shared/types';
 
 // The suit of the same color as the given suit (for left bower logic).
 export function sisterSuit(suit: Suit): Suit {
