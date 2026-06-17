@@ -1,4 +1,4 @@
-import { Card, GameState, Rank, Suit, TrickCard, TrickResult } from '../../../shared/types';
+import { Card, GameState, Rank, Suit, TrickCard, TrickResult } from '../../shared/types';
 import { sisterSuit } from './bidding';
 
 /**
