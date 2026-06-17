@@ -1,10 +1,10 @@
 {
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "npm install --prefix server && npm install --prefix client && npm run build --prefix server && npm run build --prefix client"
+    "buildCommand": "npm install && npm run build"
   },
   "deploy": {
-    "startCommand": "node server/dist/index.js",
+    "startCommand": "node dist/index.js",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }
