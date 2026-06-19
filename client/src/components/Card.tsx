@@ -38,7 +38,7 @@ export default function Card({ card, faceDown, onClick, disabled, highlighted }:
           ? 'border-yellow-400 ring-2 ring-yellow-300 shadow-lg shadow-yellow-200/60 -translate-y-1'
           : 'border-slate-200',
         clickable ? 'cursor-pointer hover:-translate-y-3 hover:shadow-xl' : 'cursor-default',
-        disabled ? 'opacity-40 grayscale' : '',
+        disabled ? 'opacity-40' : '',
       ]
         .filter(Boolean)
         .join(' ')}
