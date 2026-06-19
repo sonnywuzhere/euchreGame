@@ -8,6 +8,7 @@ import TrickArea from '../components/TrickArea';
 import Hand from '../components/Hand';
 import CardComponent from '../components/Card';
 import BiddingPanel from '../components/BiddingPanel';
+import DealerDiscardPanel from '../components/DealerDiscardPanel';
 
 const PLAYER_ID_KEY = 'euchre_player_id';
 
@@ -147,6 +148,10 @@ export default function Game() {
   const isBiddingPhase =
     gameState.phase === 'bidding_round1' || gameState.phase === 'bidding_round2';
 
+  const isDealerDiscardPhase = gameState.phase === 'dealer_discard';
+  const dealerPlayer = gameState.players.find((p) => p.position === gameState.dealerPosition);
+  const amIDealer = dealerPlayer?.id === playerId;
+
   // Game-over overlay (full-screen)
   if (gameOverResult) {
     const winnerPlayers = gameState.players.filter((p) => p.teamId === gameOverResult.winner);
@@ -229,6 +234,15 @@ export default function Game() {
                 />
               </div>
             )}
+            {isDealerDiscardPhase && !amIDealer && (
+              <div className="absolute inset-0 flex items-center justify-center z-10">
+                <div className="bg-green-900/95 border border-white/20 rounded-2xl px-5 py-3 shadow-2xl text-center">
+                  <p className="text-white text-sm">
+                    {dealerPlayer?.nickname ?? 'Dealer'} is choosing a card to discard…
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right opponent */}
@@ -242,18 +256,28 @@ export default function Game() {
 
         {/* My hand (bottom) */}
         <div className={`flex flex-col items-center gap-2 rounded-xl px-4 py-2 ${playerHighlight(me?.id)}`}>
-          <Hand
-            cards={myCards}
-            validPlays={validPlays}
-            onCardClick={(card) => socket.emit('card:play', { card })}
-          />
-          <span className="text-white/60 text-xs">
-            {isMyTurn ? (
-              <span className="text-yellow-400 font-semibold">Your turn — play a card</span>
-            ) : (
-              `You (${me?.nickname ?? '…'})`
-            )}
-          </span>
+          {isDealerDiscardPhase && amIDealer ? (
+            <DealerDiscardPanel
+              gameState={gameState}
+              playerId={playerId}
+              onDiscard={(card) => socket.emit('dealer:discard', { card })}
+            />
+          ) : (
+            <>
+              <Hand
+                cards={myCards}
+                validPlays={validPlays}
+                onCardClick={(card) => socket.emit('card:play', { card })}
+              />
+              <span className="text-white/60 text-xs">
+                {isMyTurn ? (
+                  <span className="text-yellow-400 font-semibold">Your turn — play a card</span>
+                ) : (
+                  `You (${me?.nickname ?? '…'})`
+                )}
+              </span>
+            </>
+          )}
         </div>
 
         {/* Round complete overlay */}

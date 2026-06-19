@@ -25,6 +25,7 @@ export type GamePhase =
   | 'waiting'
   | 'bidding_round1'
   | 'bidding_round2'
+  | 'dealer_discard'
   | 'playing'
   | 'scoring'
   | 'game_over';
@@ -96,6 +97,7 @@ export type ClientToServerEvents = {
   'room:create': (payload: { nickname: string }) => void;
   'room:join': (payload: { nickname: string; roomCode: string }) => void;
   'bid:submit': (payload: BidSubmitPayload) => void;
+  'dealer:discard': (payload: { card: Card }) => void;
   'card:play': (payload: { card: Card }) => void;
   'player:reconnect': (payload: { roomCode: string; playerId: string }) => void;
 };

@@ -204,24 +204,25 @@ export function registerHandlers(io: IoServer, socket: IoSocket): void {
       state.maker = decidedResult.maker;
       state.goingAlone = decidedResult.goingAlone;
       state.alonePlayerId = decidedResult.alonePlayerId;
-      state.phase = 'playing';
       state.currentRoundBids = [];
 
-      // Dealer picks up kitty when ordered up in round 1
       if (action.type === 'order_up') {
+        // Dealer picks up the kitty card (6 cards temporarily) then must discard one
         const dealer = state.players.find((p) => p.position === state.dealerPosition);
         if (dealer) {
           state.hands[dealer.id] = [...state.hands[dealer.id], state.kitty];
-          state.hands[dealer.id].pop(); // discard the last card
         }
-      }
-
-      // First lead: left of dealer; skip partner if going alone
-      state.currentPlayerPosition = (state.dealerPosition + 1) % 4;
-      if (state.goingAlone && state.alonePlayerId) {
-        const maker = state.players.find((p) => p.id === state.alonePlayerId);
-        if (maker && state.currentPlayerPosition === partnerPosition(maker.position)) {
-          state.currentPlayerPosition = (state.currentPlayerPosition + 1) % 4;
+        state.phase = 'dealer_discard';
+        state.currentPlayerPosition = state.dealerPosition;
+      } else {
+        // Round 2 name_suit — go straight to playing
+        state.phase = 'playing';
+        state.currentPlayerPosition = (state.dealerPosition + 1) % 4;
+        if (state.goingAlone && state.alonePlayerId) {
+          const maker = state.players.find((p) => p.id === state.alonePlayerId);
+          if (maker && state.currentPlayerPosition === partnerPosition(maker.position)) {
+            state.currentPlayerPosition = (state.currentPlayerPosition + 1) % 4;
+          }
         }
       }
     } else if (state.phase === 'bidding_round1' && bids.length === 4) {
@@ -231,6 +232,53 @@ export function registerHandlers(io: IoServer, socket: IoSocket): void {
       state.currentPlayerPosition = (state.dealerPosition + 1) % 4;
     } else {
       state.currentPlayerPosition = nextBidderPosition(state.dealerPosition, bids.length);
+    }
+
+    await saveGameState(state);
+    await emitGameStateToAll(io, state);
+  });
+
+  // ── dealer:discard ───────────────────────────────────────────────────────────
+  socket.on('dealer:discard', async (payload) => {
+    const ctx = socketMap.get(socket.id);
+    if (!ctx) { socket.emit('error', 'Not in a room'); return; }
+
+    const { roomCode, playerId } = ctx;
+    const state = await getGameState(roomCode);
+    if (!state) { socket.emit('error', 'Game not found'); return; }
+
+    if (state.phase !== 'dealer_discard') {
+      socket.emit('error', 'Not in dealer discard phase');
+      return;
+    }
+
+    const dealer = state.players.find((p) => p.position === state.dealerPosition);
+    if (!dealer || dealer.id !== playerId) {
+      socket.emit('error', 'Only the dealer can discard');
+      return;
+    }
+
+    const { card } = payload;
+    let removed = false;
+    const newHand = state.hands[playerId].filter((c) => {
+      if (!removed && c.suit === card.suit && c.rank === card.rank) {
+        removed = true;
+        return false;
+      }
+      return true;
+    });
+
+    if (!removed) { socket.emit('error', 'Card not in your hand'); return; }
+
+    state.hands[playerId] = newHand;
+    state.phase = 'playing';
+    state.currentPlayerPosition = (state.dealerPosition + 1) % 4;
+
+    if (state.goingAlone && state.alonePlayerId) {
+      const maker = state.players.find((p) => p.id === state.alonePlayerId);
+      if (maker && state.currentPlayerPosition === partnerPosition(maker.position)) {
+        state.currentPlayerPosition = (state.currentPlayerPosition + 1) % 4;
+      }
     }
 
     await saveGameState(state);
