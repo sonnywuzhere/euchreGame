@@ -1,4 +1,5 @@
 import type { Suit, Player } from '../../../shared/types';
+import MusicPlayer from './MusicPlayer';
 
 const SUIT_SYMBOLS: Record<Suit, string> = {
   hearts: '♥',
@@ -122,6 +123,8 @@ export default function Scoreboard({
           </div>
         )}
       </div>
+
+      <MusicPlayer />
     </div>
   );
 }
