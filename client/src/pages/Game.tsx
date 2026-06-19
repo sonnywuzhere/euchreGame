@@ -223,6 +223,11 @@ export default function Game() {
               trickWinner={trickWinner}
               goingAlone={gameState.goingAlone}
               alonePlayerId={gameState.alonePlayerId}
+              centerCard={
+                gameState.phase === 'bidding_round1' || gameState.phase === 'dealer_discard'
+                  ? gameState.kitty
+                  : null
+              }
             />
             {isBiddingPhase && (
               <div className="absolute inset-0 flex items-center justify-center z-10">

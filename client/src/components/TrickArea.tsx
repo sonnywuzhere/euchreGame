@@ -1,4 +1,4 @@
-import type { TrickCard, Player } from '../../../shared/types';
+import type { Card, TrickCard, Player } from '../../../shared/types';
 import CardComponent from './Card';
 
 interface TrickAreaProps {
@@ -8,6 +8,7 @@ interface TrickAreaProps {
   trickWinner?: string | null;
   goingAlone?: boolean;
   alonePlayerId?: string | null;
+  centerCard?: Card | null;
 }
 
 function EmptySlot() {
@@ -23,6 +24,7 @@ export default function TrickArea({
   trickWinner,
   goingAlone,
   alonePlayerId,
+  centerCard,
 }: TrickAreaProps) {
   const getCardForSeat = (seatOffset: 0 | 1 | 2 | 3) => {
     const absPosition = (myPosition + seatOffset) % 4;
@@ -76,8 +78,10 @@ export default function TrickArea({
 
         {/* Row 1 */}
         <div className="flex items-center justify-center">{renderSlot(leftCard)}</div>
-        {/* Center felt — empty */}
-        <div className="w-16 h-24 rounded-lg bg-green-800/40" />
+        {/* Center felt — kitty card during round 1 bidding / dealer discard, otherwise empty */}
+        <div className="w-16 h-24 rounded-lg bg-green-800/40 flex items-center justify-center">
+          {centerCard && <CardComponent card={centerCard} />}
+        </div>
         <div className="flex items-center justify-center">{renderSlot(rightCard)}</div>
 
         {/* Row 2 */}
