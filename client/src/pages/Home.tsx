@@ -1,7 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import socket from '../hooks/useSocket';
 import type { RoomState } from '../../../shared/types';
+import {
+  clearStoredSession,
+  getStoredPlayerId,
+  getStoredRoomCode,
+  setStoredPlayerId,
+} from '../lib/session';
 
 export type HomeNavState =
   | { kind: 'created'; initialRoomState: RoomState }
@@ -14,15 +20,29 @@ export default function Home() {
   const [mode, setMode] = useState<'idle' | 'joining'>('idle');
   const [error, setError] = useState('');
 
+  // Resume-on-boot: if we have a stored identity + room (e.g. the browser was
+  // closed mid-game), jump straight back to the game and let it reconnect.
+  useEffect(() => {
+    const storedRoom = getStoredRoomCode();
+    const storedId = getStoredPlayerId();
+    if (storedRoom && storedId) {
+      navigate(`/game/${storedRoom}`, { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function handleCreate() {
     if (!nickname.trim()) return;
     setError('');
 
+    // Starting fresh — drop any stale identity from a previous game.
+    clearStoredSession();
+
     // Capture the creator's UUID before Room.tsx mounts its listener.
     // The server emits player:registered right after room:state, so this
-    // socket.once will fire (even post-navigation) and seed sessionStorage.
+    // socket.once will fire (even post-navigation) and seed storage.
     socket.once('player:registered', (id: string) => {
-      sessionStorage.setItem('euchre_player_id', id);
+      setStoredPlayerId(id);
     });
     socket.once('room:state', (state: RoomState) => {
       const navState: HomeNavState = { kind: 'created', initialRoomState: state };
@@ -38,6 +58,9 @@ export default function Home() {
   function handleJoin() {
     if (!nickname.trim() || !roomCode.trim()) return;
     setError('');
+
+    // Starting fresh — drop any stale identity from a previous game.
+    clearStoredSession();
 
     // Navigate immediately — Room.tsx will emit room:join once its listener is ready.
     const code = roomCode.trim().toUpperCase();

@@ -9,8 +9,11 @@ import Hand from '../components/Hand';
 import CardComponent from '../components/Card';
 import BiddingPanel from '../components/BiddingPanel';
 import DealerDiscardPanel from '../components/DealerDiscardPanel';
+import { clearStoredSession, getStoredPlayerId } from '../lib/session';
 
-const PLAYER_ID_KEY = 'euchre_player_id';
+// How long to wait for the server to restore our game before giving up on a
+// stale/ended session and returning to the lobby.
+const RESUME_TIMEOUT_MS = 6000;
 
 function FaceDownHand({ count }: { count: number }) {
   return (
@@ -43,14 +46,33 @@ export default function Game() {
     if (gameState) scoresRef.current = gameState.scores;
   }, [gameState]);
 
-  // Reconnect on mount if state is missing
+  // Re-identify to the server whenever the socket (re)connects — not just once
+  // on mount. Socket.IO auto-reconnects with a NEW socket.id after a tab-away or
+  // network drop, and the server maps players by socket.id, so without this the
+  // reconnected socket stays a stranger and we get dropped from the room.
   useEffect(() => {
-    const storedId = sessionStorage.getItem(PLAYER_ID_KEY);
-    if (!gameState && roomCode && storedId) {
+    const storedId = getStoredPlayerId();
+    if (!roomCode || !storedId) return;
+
+    const reidentify = () => {
       socket.emit('player:reconnect', { roomCode, playerId: storedId });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    };
+
+    if (socket.connected) reidentify(); // already connected on mount
+    socket.on('connect', reidentify);   // and on every future (re)connect
+    return () => { socket.off('connect', reidentify); };
+  }, [roomCode]);
+
+  // If we never manage to restore the game (stale/ended session), stop showing
+  // the spinner forever — clear the saved session and return to the lobby.
+  useEffect(() => {
+    if (gameState) return;
+    const timer = setTimeout(() => {
+      clearStoredSession();
+      navigate('/', { replace: true });
+    }, RESUME_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [gameState, navigate]);
 
   // trick:complete — brief winner banner
   useEffect(() => {
@@ -92,6 +114,8 @@ export default function Game() {
   // game:over — full-screen overlay
   useEffect(() => {
     function onGameOver(result: { winner: 0 | 1; scores: [number, number] }) {
+      // Game's finished — forget this session so we don't auto-resume into it.
+      clearStoredSession();
       setGameOverResult(result);
     }
     socket.on('game:over', onGameOver);

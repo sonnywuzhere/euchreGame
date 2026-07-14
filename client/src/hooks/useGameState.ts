@@ -1,31 +1,33 @@
 import { useEffect, useState } from 'react';
 import type { RoomState, GameState } from '../../../shared/types';
 import socket from './useSocket';
-
-const PLAYER_ID_KEY = 'euchre_player_id';
+import { getStoredPlayerId, setStoredPlayerId, setStoredRoomCode } from '../lib/session';
 
 export function useGameState(initialRoomState?: RoomState | null) {
   const [roomState, setRoomState] = useState<RoomState | null>(initialRoomState ?? null);
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const [playerId, setPlayerId] = useState<string>(
-    () => sessionStorage.getItem(PLAYER_ID_KEY) ?? ''
-  );
+  const [playerId, setPlayerId] = useState<string>(() => getStoredPlayerId() ?? '');
 
   useEffect(() => {
     function onPlayerRegistered(id: string) {
-      sessionStorage.setItem(PLAYER_ID_KEY, id);
+      setStoredPlayerId(id);
       setPlayerId(id);
     }
 
+    // Persist the room code from any state update so we can rejoin after a
+    // reconnect or browser restart (see lib/session + Game reconnect effect).
     function onRoomState(state: RoomState) {
+      setStoredRoomCode(state.roomCode);
       setRoomState(state);
     }
 
     function onGameState(state: GameState) {
+      setStoredRoomCode(state.roomCode);
       setGameState(state);
     }
 
     function onGameStart(state: GameState) {
+      setStoredRoomCode(state.roomCode);
       setGameState(state);
     }
 
