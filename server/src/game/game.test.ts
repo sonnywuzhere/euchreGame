@@ -42,6 +42,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     trickHistory: [],
     scores: [0, 0],
     roundTricks: [0, 0],
+    roundTrickCounts: { p0: 0, p1: 0, p2: 0, p3: 0 },
     phase: 'bidding_round1',
     dealerPosition: 3,
     currentPlayerPosition: 0,

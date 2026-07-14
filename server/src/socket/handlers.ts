@@ -34,12 +34,20 @@ import {
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents>;
 type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 
+// How long the completed 4-card trick stays on the table before the winner is
+// revealed (trick:complete) and the table clears. Tune here. See CLAUDE.md.
+const TRICK_RESOLVE_DELAY_MS = 2000;
+
+const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
 // socket.id → { roomCode, playerId }
 const socketMap = new Map<string, { roomCode: string; playerId: string }>();
 // playerId → socket.id (latest active socket for that player)
 const playerSocketMap = new Map<string, string>();
 // "roomCode:playerId" → disconnect grace timer
 const disconnectTimers = new Map<string, NodeJS.Timeout>();
+// roomCodes currently in the trick-reveal pause — card:play is ignored while held
+const resolvingTricks = new Set<string>();
 
 function makePlayerView(state: GameState, playerId: string): GameState {
   const hands: Record<string, Card[]> = {};
@@ -71,6 +79,10 @@ function buildInitialGameState(
 
   const { hands, kitty } = dealHands(deck, playerIds);
 
+  // Fresh per-player trick tally for the new round — every player starts at 0
+  const roundTrickCounts: Record<string, number> = {};
+  for (const p of players) roundTrickCounts[p.id] = 0;
+
   return {
     roomCode,
     players,
@@ -84,6 +96,7 @@ function buildInitialGameState(
     trickHistory: [],
     scores: existingScores,
     roundTricks: [0, 0],
+    roundTrickCounts,
     phase: 'bidding_round1',
     dealerPosition,
     currentPlayerPosition: (dealerPosition + 1) % 4,
@@ -291,6 +304,10 @@ export function registerHandlers(io: IoServer, socket: IoSocket): void {
     if (!ctx) { socket.emit('error', 'Not in a room'); return; }
 
     const { roomCode, playerId } = ctx;
+
+    // Ignore plays while the previous trick is being revealed (pause window).
+    if (resolvingTricks.has(roomCode)) return;
+
     const state = await getGameState(roomCode);
     if (!state) { socket.emit('error', 'Game not found'); return; }
 
@@ -309,65 +326,86 @@ export function registerHandlers(io: IoServer, socket: IoSocket): void {
     const trickSize = state.goingAlone ? 3 : 4;
 
     if (state.currentTrick.length === trickSize) {
-      // Resolve completed trick
+      // Determine the winner now, but hold off on revealing it — first let every
+      // client see the completed 4-card trick, pause, THEN record + reveal.
       const winnerEntry = resolveTrick(state.currentTrick, state.trump!);
       const winnerPlayer = state.players.find((p) => p.id === winnerEntry.playerId)!;
 
-      state.trickHistory = [
-        ...state.trickHistory,
-        {
-          winnerId: winnerEntry.playerId,
-          winnerTeamId: winnerPlayer.teamId,
-          cards: state.currentTrick,
-        },
-      ];
-      const updatedRoundTricks: [number, number] = [...state.roundTricks];
-      updatedRoundTricks[winnerPlayer.teamId]++;
-      state.roundTricks = updatedRoundTricks;
+      // Lock the room so no stray 5th card lands during the reveal pause.
+      resolvingTricks.add(roomCode);
+      try {
+        // 1) Broadcast the full trick (all four cards stay on the table).
+        await saveGameState(state);
+        await emitGameStateToAll(io, state);
 
-      const completedTrick = state.currentTrick;
-      state.currentTrick = [];
+        // 2) Brief pause, driven server-side so all four clients stay in sync.
+        await delay(TRICK_RESOLVE_DELAY_MS);
 
-      io.to(roomCode).emit('trick:complete', {
-        winner: winnerEntry.playerId,
-        trick: completedTrick.map((tc) => tc.card),
-      });
+        // 3) Record the trick and bump the winner's tallies as the result shows.
+        state.trickHistory = [
+          ...state.trickHistory,
+          {
+            winnerId: winnerEntry.playerId,
+            winnerTeamId: winnerPlayer.teamId,
+            cards: state.currentTrick,
+          },
+        ];
+        const updatedRoundTricks: [number, number] = [...state.roundTricks];
+        updatedRoundTricks[winnerPlayer.teamId]++;
+        state.roundTricks = updatedRoundTricks;
+        state.roundTrickCounts = {
+          ...state.roundTrickCounts,
+          [winnerPlayer.id]: (state.roundTrickCounts[winnerPlayer.id] ?? 0) + 1,
+        };
 
-      if (state.trickHistory.length === 5) {
-        // Round over — score and decide next step
-        const roundResult = scoreRound(state);
-        state.scores = applyRoundScore(state.scores, roundResult);
+        const completedTrick = state.currentTrick;
+        state.currentTrick = [];
 
-        io.to(roomCode).emit('round:complete', { scores: state.scores });
+        io.to(roomCode).emit('trick:complete', {
+          winner: winnerEntry.playerId,
+          trick: completedTrick.map((tc) => tc.card),
+        });
 
-        if (isGameOver(state.scores)) {
-          const winner = getWinner(state.scores)!;
-          state.phase = 'game_over';
-          await saveGameState(state);
-          io.to(roomCode).emit('game:over', { winner, scores: state.scores });
+        if (state.trickHistory.length === 5) {
+          // Round over — score and decide next step
+          const roundResult = scoreRound(state);
+          state.scores = applyRoundScore(state.scores, roundResult);
+
+          io.to(roomCode).emit('round:complete', { scores: state.scores });
+
+          if (isGameOver(state.scores)) {
+            const winner = getWinner(state.scores)!;
+            state.phase = 'game_over';
+            await saveGameState(state);
+            io.to(roomCode).emit('game:over', { winner, scores: state.scores });
+            return;
+          }
+
+          // Start next round with rotated dealer
+          const newDealerPosition = (state.dealerPosition + 1) % 4;
+          const nextRound = buildInitialGameState(
+            roomCode,
+            state.players,
+            newDealerPosition,
+            state.scores
+          );
+          await saveGameState(nextRound);
+          await emitGameStateToAll(io, nextRound);
           return;
         }
 
-        // Start next round with rotated dealer
-        const newDealerPosition = (state.dealerPosition + 1) % 4;
-        const nextRound = buildInitialGameState(
-          roomCode,
-          state.players,
-          newDealerPosition,
-          state.scores
-        );
-        await saveGameState(nextRound);
-        await emitGameStateToAll(io, nextRound);
-        return;
+        // Next trick: winner leads
+        state.currentPlayerPosition = winnerPlayer.position;
+        await saveGameState(state);
+        await emitGameStateToAll(io, state);
+      } finally {
+        resolvingTricks.delete(roomCode);
       }
-
-      // Next trick: winner leads
-      state.currentPlayerPosition = winnerPlayer.position;
-    } else {
-      // Advance within the current trick
-      state.currentPlayerPosition = nextActiveTrickPlayer(state.currentPlayerPosition, state);
+      return;
     }
 
+    // Advance within the current trick
+    state.currentPlayerPosition = nextActiveTrickPlayer(state.currentPlayerPosition, state);
     await saveGameState(state);
     await emitGameStateToAll(io, state);
   });

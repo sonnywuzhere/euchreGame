@@ -152,6 +152,15 @@ export default function Game() {
     </span>
   );
 
+  // Per-player tricks taken this round (server-authoritative, resets each round)
+  const trickCount = (pid: string | undefined) =>
+    pid ? gameState.roundTrickCounts?.[pid] ?? 0 : 0;
+  const TrickBadge = ({ pid }: { pid: string | undefined }) => (
+    <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-white/10 border border-white/20 text-white/70 leading-none">
+      {trickCount(pid)}/5
+    </span>
+  );
+
   const isBiddingPhase =
     gameState.phase === 'bidding_round1' || gameState.phase === 'bidding_round2';
 
@@ -198,6 +207,7 @@ export default function Game() {
           <span className="text-white/80 text-sm font-medium">
             {partnerPlayer?.nickname ?? '—'}
             {isDealer(partnerPlayer?.id) && <DealerBadge />}
+            <TrickBadge pid={partnerPlayer?.id} />
             {isPartnerSittingOut && (
               <span className="ml-2 text-white/40 text-xs">(sitting out)</span>
             )}
@@ -219,6 +229,7 @@ export default function Game() {
             <span className="text-white/80 text-sm font-medium">
               {leftPlayer?.nickname ?? '—'}
               {isDealer(leftPlayer?.id) && <DealerBadge />}
+              <TrickBadge pid={leftPlayer?.id} />
             </span>
             <FaceDownHand count={getHandCount(leftPlayer?.id)} />
           </div>
@@ -264,6 +275,7 @@ export default function Game() {
             <span className="text-white/80 text-sm font-medium">
               {rightPlayer?.nickname ?? '—'}
               {isDealer(rightPlayer?.id) && <DealerBadge />}
+              <TrickBadge pid={rightPlayer?.id} />
             </span>
             <FaceDownHand count={getHandCount(rightPlayer?.id)} />
           </div>
@@ -291,6 +303,7 @@ export default function Game() {
                   `You (${me?.nickname ?? '…'})`
                 )}
                 {isDealer(me?.id) && <DealerBadge />}
+                <TrickBadge pid={me?.id} />
               </span>
             </>
           )}

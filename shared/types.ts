@@ -43,6 +43,7 @@ export type GameState = {
   trickHistory: TrickResult[];
   scores: [number, number];
   roundTricks: [number, number];
+  roundTrickCounts: Record<string, number>; // playerId → tricks won this round (public, resets each round)
   phase: GamePhase;
   dealerPosition: number;
   currentPlayerPosition: number;

@@ -42,6 +42,24 @@ with invite codes. Built with React + TypeScript (frontend), Node.js + Socket.io
 | Going alone, win all 5 tricks | 4 pts to maker's team |
 | Game ends at | 10 points |
 
+## Gameplay Feature Notes
+- **Card coloring**: hearts/diamonds render red, clubs/spades black; suit colour is
+  preserved even on disabled (non-playable) cards (no grayscale wash) — Card.tsx.
+- **Ordered-up card visible on table**: during round-1 bidding / dealer discard the
+  turn-up (kitty) card shows in the center felt for all players — TrickArea.tsx
+  `centerCard` prop, driven from Game.tsx.
+- **Trick-reveal pause**: when the 4th card completes a trick the server broadcasts
+  the full trick, waits, then emits `trick:complete` and clears the table, so all
+  four clients see the final card in sync before the winner banner. Delay lives in
+  the `TRICK_RESOLVE_DELAY_MS` constant (default 2000 ms) at the top of
+  server/src/socket/handlers.ts. A `resolvingTricks` lock ignores stray plays during
+  the pause; it's independent of the 60s disconnect grace timer.
+- **Per-player trick counter**: `GameState.roundTrickCounts` (`playerId → number`,
+  shared/unfiltered state) tracks tricks taken this round per player; reset to 0 for
+  everyone when each round's state is built, incremented for the winner when the
+  trick resolves (after the pause). Rendered as a compact `x/5` badge next to each
+  seat name via the `TrickBadge` in client/src/pages/Game.tsx.
+
 ## Socket Event Reference
 | Event | Direction | Payload |
 |---|---|---|
@@ -98,12 +116,22 @@ euchre-online/
 [ ] Session 5 — Polish, error handling, Railway deploy
 ```
 
-**Current session:** Session 4b ready to start (bidding UI)
-**Last updated:** June 2026
+**Current session:** Session 4c done (trick-reveal pause + per-player trick counter)
+**Last updated:** July 2026
 
 ### Session Notes
 
 ```
+Session 4c — July 2026
+Built: trick-reveal pause (server-side ~2s hold before trick:complete, TRICK_RESOLVE_DELAY_MS
+  in handlers.ts, guarded by a resolvingTricks lock) + per-player trick counter
+  (GameState.roundTrickCounts, x/5 TrickBadge by every seat name in Game.tsx).
+Types: added roundTrickCounts to GameState in both shared/types.ts and server/src/shared/types.ts;
+  baseState test helper updated to match.
+Decisions: pause held server-side so all 4 clients see the 4th card before the winner banner;
+  counts increment when the trick resolves (after the pause), ride in the shared game:state.
+Known issues: None (server npm test green; tsc --noEmit clean on client + server).
+
 Session 4a — June 2026
 Built: Card.tsx, Hand.tsx, TrickArea.tsx, Scoreboard.tsx, Game.tsx (page); wired into App.tsx.
 Card: face-up (rank + suit symbol, red/black) + face-down (emerald back), highlighted (yellow glow),
