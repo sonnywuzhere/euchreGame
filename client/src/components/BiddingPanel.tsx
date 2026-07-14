@@ -28,7 +28,7 @@ export default function BiddingPanel({ gameState, playerId, onBid }: BiddingPane
   const isRound2 = gameState.phase === 'bidding_round2';
   const turnedDownSuit = gameState.kitty.suit;
 
-  if (!isMyTurn || (!isRound1 && !isRound2)) return null;
+  if (!isRound1 && !isRound2) return null;
 
   function submit(payload: BidSubmitPayload) {
     setSubmitted(true);

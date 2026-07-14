@@ -145,6 +145,13 @@ export default function Game() {
       ? 'ring-2 ring-yellow-400/60'
       : '';
 
+  const isDealer = (pid: string | undefined) => pid === dealerPlayer?.id;
+  const DealerBadge = () => (
+    <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-amber-500/20 border border-amber-400/40 text-amber-300 leading-none">
+      D
+    </span>
+  );
+
   const isBiddingPhase =
     gameState.phase === 'bidding_round1' || gameState.phase === 'bidding_round2';
 
@@ -190,6 +197,7 @@ export default function Game() {
         <div className={`flex flex-col items-center gap-2 rounded-xl px-3 py-2 ${playerHighlight(partnerPlayer?.id)}`}>
           <span className="text-white/80 text-sm font-medium">
             {partnerPlayer?.nickname ?? '—'}
+            {isDealer(partnerPlayer?.id) && <DealerBadge />}
             {isPartnerSittingOut && (
               <span className="ml-2 text-white/40 text-xs">(sitting out)</span>
             )}
@@ -210,6 +218,7 @@ export default function Game() {
           <div className={`flex flex-col items-center gap-2 rounded-xl px-3 py-2 ${playerHighlight(leftPlayer?.id)}`}>
             <span className="text-white/80 text-sm font-medium">
               {leftPlayer?.nickname ?? '—'}
+              {isDealer(leftPlayer?.id) && <DealerBadge />}
             </span>
             <FaceDownHand count={getHandCount(leftPlayer?.id)} />
           </div>
@@ -254,6 +263,7 @@ export default function Game() {
           <div className={`flex flex-col items-center gap-2 rounded-xl px-3 py-2 ${playerHighlight(rightPlayer?.id)}`}>
             <span className="text-white/80 text-sm font-medium">
               {rightPlayer?.nickname ?? '—'}
+              {isDealer(rightPlayer?.id) && <DealerBadge />}
             </span>
             <FaceDownHand count={getHandCount(rightPlayer?.id)} />
           </div>
@@ -274,12 +284,13 @@ export default function Game() {
                 validPlays={validPlays}
                 onCardClick={(card) => socket.emit('card:play', { card })}
               />
-              <span className="text-white/60 text-xs">
+              <span className="text-white/60 text-xs flex items-center">
                 {isMyTurn ? (
                   <span className="text-yellow-400 font-semibold">Your turn — play a card</span>
                 ) : (
                   `You (${me?.nickname ?? '…'})`
                 )}
+                {isDealer(me?.id) && <DealerBadge />}
               </span>
             </>
           )}
