@@ -32,7 +32,7 @@ export default function Card({ card, faceDown, onClick, disabled, highlighted }:
     <div
       onClick={clickable ? onClick : undefined}
       className={[
-        'w-16 h-24 rounded-lg border-2 bg-white flex flex-col justify-between p-1.5 select-none flex-shrink-0 transition-all duration-150',
+        'w-16 h-24 rounded-lg border-2 bg-white flex flex-col p-2 select-none flex-shrink-0 transition-all duration-150',
         isRed ? 'text-red-600' : 'text-slate-900',
         highlighted
           ? 'border-yellow-400 ring-2 ring-yellow-300 shadow-lg shadow-yellow-200/60 -translate-y-1'
@@ -47,7 +47,7 @@ export default function Card({ card, faceDown, onClick, disabled, highlighted }:
         <span className="text-sm font-bold">{card.rank}</span>
         <span className="text-xs">{symbol}</span>
       </div>
-      <div className="text-center text-2xl leading-none">{symbol}</div>
+      <div className="flex-1 flex items-center justify-center text-2xl leading-none">{symbol}</div>
       <div className="flex flex-col items-end leading-none rotate-180">
         <span className="text-sm font-bold">{card.rank}</span>
         <span className="text-xs">{symbol}</span>
