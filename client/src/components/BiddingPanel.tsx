@@ -30,6 +30,26 @@ export default function BiddingPanel({ gameState, playerId, onBid }: BiddingPane
 
   if (!isRound1 && !isRound2) return null;
 
+  // Not this player's turn: show a read-only status of who is bidding
+  if (!isMyTurn) {
+    const currentPlayer = gameState.players.find(
+      (p) => p.position === gameState.currentPlayerPosition
+    );
+    return (
+      <div className="bg-green-900/95 border border-white/20 rounded-2xl p-5 shadow-2xl flex flex-col items-center gap-3">
+        {isRound1 && (
+          <>
+            <p className="text-white/60 text-xs uppercase tracking-wider">Turn-up card</p>
+            <CardComponent card={gameState.kitty} />
+          </>
+        )}
+        <p className="text-white/70 text-sm">
+          {currentPlayer?.nickname ?? 'Someone'} is deciding…
+        </p>
+      </div>
+    );
+  }
+
   function submit(payload: BidSubmitPayload) {
     setSubmitted(true);
     onBid(payload);
