@@ -11,6 +11,14 @@ type NewPlayer = Pick<Player, 'id' | 'nickname'>;
 const ROOM_KEY = (code: string) => `room:${code}:state`;
 const GAME_KEY = (code: string) => `room:${code}:game`;
 
+// Sliding TTL for room + game keys. Refreshed on every read and write, so an
+// active room never expires, but one nobody touches (creator closed the tab,
+// game abandoned mid-play, timers lost to a server restart) is reaped ~30min
+// after the last interaction. Must comfortably exceed the human-scale gap
+// between creating a room and someone else typing the code into another
+// browser — the old 60s value expired rooms before invitees could join.
+const ROOM_TTL_SECONDS = 30 * 60;
+
 export function generateRoomCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
@@ -24,8 +32,7 @@ export async function createRoom(roomCode: string, player: NewPlayer): Promise<R
     connected: true,
   };
   const state: RoomState = { roomCode, players: [roomPlayer], gameStarted: false };
-  // 60s TTL — auto-deletes if nobody else joins
-  await redis.set(ROOM_KEY(roomCode), JSON.stringify(state), 'EX', 60);
+  await redis.set(ROOM_KEY(roomCode), JSON.stringify(state), 'EX', ROOM_TTL_SECONDS);
   return state;
 }
 
@@ -45,27 +52,33 @@ export async function joinRoom(
 
   state.players.push({ ...player, position, teamId, connected: true });
 
-  // Clear the TTL now that the room has multiple players
-  await redis.set(ROOM_KEY(roomCode), JSON.stringify(state));
+  // Refresh the sliding TTL — a join is activity, so the window resets.
+  await redis.set(ROOM_KEY(roomCode), JSON.stringify(state), 'EX', ROOM_TTL_SECONDS);
   return { room: state };
 }
 
 export async function getRoomState(roomCode: string): Promise<RoomState | null> {
   const raw = await redis.get(ROOM_KEY(roomCode));
-  return raw ? JSON.parse(raw) : null;
+  if (!raw) return null;
+  // A read is activity too — slide the TTL forward.
+  await redis.expire(ROOM_KEY(roomCode), ROOM_TTL_SECONDS);
+  return JSON.parse(raw);
 }
 
 export async function saveRoomState(state: RoomState): Promise<void> {
-  await redis.set(ROOM_KEY(state.roomCode), JSON.stringify(state));
+  await redis.set(ROOM_KEY(state.roomCode), JSON.stringify(state), 'EX', ROOM_TTL_SECONDS);
 }
 
 export async function getGameState(roomCode: string): Promise<GameState | null> {
   const raw = await redis.get(GAME_KEY(roomCode));
-  return raw ? JSON.parse(raw) : null;
+  if (!raw) return null;
+  // A read is activity too — slide the TTL forward.
+  await redis.expire(GAME_KEY(roomCode), ROOM_TTL_SECONDS);
+  return JSON.parse(raw);
 }
 
 export async function saveGameState(state: GameState): Promise<void> {
-  await redis.set(GAME_KEY(state.roomCode), JSON.stringify(state));
+  await redis.set(GAME_KEY(state.roomCode), JSON.stringify(state), 'EX', ROOM_TTL_SECONDS);
 }
 
 export async function removePlayer(roomCode: string, playerId: string): Promise<RoomState | null> {
