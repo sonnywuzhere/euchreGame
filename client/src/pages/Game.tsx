@@ -9,6 +9,7 @@ import Hand from '../components/Hand';
 import CardComponent from '../components/Card';
 import BiddingPanel from '../components/BiddingPanel';
 import DealerDiscardPanel from '../components/DealerDiscardPanel';
+import DealerBadge from '../components/DealerBadge';
 import { clearStoredSession, getStoredPlayerId } from '../lib/session';
 
 // How long to wait for the server to restore our game before giving up on a
@@ -170,11 +171,6 @@ export default function Game() {
       : '';
 
   const isDealer = (pid: string | undefined) => pid === dealerPlayer?.id;
-  const DealerBadge = () => (
-    <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-amber-500/20 border border-amber-400/40 text-amber-300 leading-none">
-      D
-    </span>
-  );
 
   // Per-player tricks taken this round (server-authoritative, resets each round)
   const trickCount = (pid: string | undefined) =>
@@ -230,7 +226,7 @@ export default function Game() {
         <div className={`flex flex-col items-center gap-2 rounded-xl px-3 py-2 ${playerHighlight(partnerPlayer?.id)}`}>
           <span className="text-white/80 text-sm font-medium">
             {partnerPlayer?.nickname ?? '—'}
-            {isDealer(partnerPlayer?.id) && <DealerBadge />}
+            {isDealer(partnerPlayer?.id) && <DealerBadge className="ml-1.5 align-middle" />}
             <TrickBadge pid={partnerPlayer?.id} />
             {isPartnerSittingOut && (
               <span className="ml-2 text-white/40 text-xs">(sitting out)</span>
@@ -252,7 +248,7 @@ export default function Game() {
           <div className={`flex flex-col items-center gap-2 rounded-xl px-3 py-2 ${playerHighlight(leftPlayer?.id)}`}>
             <span className="text-white/80 text-sm font-medium">
               {leftPlayer?.nickname ?? '—'}
-              {isDealer(leftPlayer?.id) && <DealerBadge />}
+              {isDealer(leftPlayer?.id) && <DealerBadge className="ml-1.5 align-middle" />}
               <TrickBadge pid={leftPlayer?.id} />
             </span>
             <FaceDownHand count={getHandCount(leftPlayer?.id)} />
@@ -298,7 +294,7 @@ export default function Game() {
           <div className={`flex flex-col items-center gap-2 rounded-xl px-3 py-2 ${playerHighlight(rightPlayer?.id)}`}>
             <span className="text-white/80 text-sm font-medium">
               {rightPlayer?.nickname ?? '—'}
-              {isDealer(rightPlayer?.id) && <DealerBadge />}
+              {isDealer(rightPlayer?.id) && <DealerBadge className="ml-1.5 align-middle" />}
               <TrickBadge pid={rightPlayer?.id} />
             </span>
             <FaceDownHand count={getHandCount(rightPlayer?.id)} />
@@ -326,7 +322,7 @@ export default function Game() {
                 ) : (
                   `You (${me?.nickname ?? '…'})`
                 )}
-                {isDealer(me?.id) && <DealerBadge />}
+                {isDealer(me?.id) && <DealerBadge className="ml-1.5 align-middle" />}
                 <TrickBadge pid={me?.id} />
               </span>
             </>

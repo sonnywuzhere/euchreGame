@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Card, GameState } from '../../../shared/types';
 import CardComponent from './Card';
+import DealerBadge from './DealerBadge';
 
 interface DealerDiscardPanelProps {
   gameState: GameState;
@@ -45,7 +46,10 @@ export default function DealerDiscardPanel({ gameState, playerId, onDiscard }: D
   return (
     <div className="flex flex-col items-center gap-3 w-full">
       <div className="text-center">
-        <p className="text-white font-semibold text-sm">Choose a card to discard</p>
+        <p className="text-white font-semibold text-sm">
+          Choose a card to discard
+          <DealerBadge className="ml-1.5 align-middle" />
+        </p>
         <p className="text-white/50 text-xs mt-0.5">
           {kitty.rank} of {SUIT_NAMES[kitty.suit]} was ordered up — you have 6 cards, discard one
         </p>

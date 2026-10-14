@@ -112,8 +112,9 @@ euchre-online/
 [x] Session 1 — Game engine (deck, bidding, tricks, scoring) + shared types + full scaffold
 [x] Session 2 — Room manager + Socket.io handlers
 [x] Session 3 — React frontend lobby (routing, hooks, Home + Room pages)
-[~] Session 4 — Game table UI (bidding UI, card play, trick display) — 4a done (layout + cards)
-[ ] Session 5 — Polish, error handling, Railway deploy
+[x] Session 4 — Game table UI (bidding UI, card play, trick display) — 4a layout + cards, 4b bidding + dealer discard
+[x] Session 4c — Trick-reveal pause + per-player trick counter
+[x] Session 5 — Polish, error handling, Railway deploy
 ```
 
 **Current session:** Session 4c done (trick-reveal pause + per-player trick counter)
@@ -131,6 +132,29 @@ Types: added roundTrickCounts to GameState in both shared/types.ts and server/sr
 Decisions: pause held server-side so all 4 clients see the 4th card before the winner banner;
   counts increment when the trick resolves (after the pause), ride in the shared game:state.
 Known issues: None (server npm test green; tsc --noEmit clean on client + server).
+
+Session 5 — July 2026
+Built: error handling (server emits 'error' on every invalid action; client listens via
+  socket.once('error') in Home.tsx + Room.tsx), reconnect-on-mount, trick-winner banner,
+  round-complete overlay, full-screen game-over screen with "Play Again", going-alone
+  "sitting out" state, active-player highlight ring. Extras beyond plan: MusicPlayer
+  component + playlist.ts.
+Deploy: railway.json — Nixpacks build (install + build server & client), start
+  'node server/dist/index.js', restart ON_FAILURE (max 3 retries).
+Verified: server tsc clean, client tsc + vite build clean (82 modules, ~251 KB JS),
+  game engine tests 76/76 passing.
+Known issues: unused GamePage.tsx + LobbyPage.tsx (dead scaffolds, not routed in App.tsx);
+  socket event table above is missing 'dealer:discard' and 'player:registered'.
+Next session: none — feature-complete.
+
+Session 4b — July 2026
+Built: BiddingPanel.tsx (round 1 order-up / pass with turn-up card; round 2 name-a-suit
+  grid that disables the turned-down suit and hides Pass for the dealer — stick-the-dealer;
+  go-alone toggle + confirm step + waiting state), DealerDiscardPanel.tsx (dealer picks a
+  discard after being ordered up; "NEW" / "DISCARD" tags). Wired into Game.tsx (bidding
+  overlay on trick area, discard panel replaces hand for dealer). Server: bid:submit +
+  dealer:discard handlers.
+Next session: Session 5 — polish, error handling, Railway deploy.
 
 Session 4a — June 2026
 Built: Card.tsx, Hand.tsx, TrickArea.tsx, Scoreboard.tsx, Game.tsx (page); wired into App.tsx.
